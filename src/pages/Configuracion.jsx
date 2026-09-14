@@ -1,17 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import FormField from "../components/ui/FormField.jsx";
 import { PrimaryButton } from "../components/ui/Button.jsx";
 
 export default function Configuracion() {
-  const { config, setConfig } = useData();
+  const { config, setConfig, configLoading } = useData();
   const [form, setForm] = useState(config);
   const [saved, setSaved] = useState(false);
 
-  const submit = (e) => {
+  // config llega de forma asíncrona desde Supabase, así que el
+  // formulario se sincroniza en cuanto termina de cargar.
+  useEffect(() => {
+    setForm(config);
+  }, [config]);
+
+  const submit = async (e) => {
     e.preventDefault();
-    setConfig({ ...form, margenDeseado: Number(form.margenDeseado) || 0 });
+    await setConfig({ ...form, margenDeseado: Number(form.margenDeseado) || 0 });
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
   };
@@ -19,6 +25,7 @@ export default function Configuracion() {
   return (
     <div>
       <PageHeader title="Configuración" subtitle="Datos generales de tu negocio" />
+      {configLoading && <p style={{ color: "var(--taupe)", fontSize: 14, marginBottom: 12 }}>Cargando configuración…</p>}
       <div className="card" style={{ padding: 24, maxWidth: 420 }}>
         <form onSubmit={submit}>
           <FormField label="Nombre del negocio">

@@ -1,30 +1,20 @@
-import React, { createContext, useContext, useState } from "react";
-import { useCollection, loadValue, saveValue } from "../data/storage.js";
+import React, { createContext, useContext } from "react";
+import { useCollection, useConfig } from "../data/storage.js";
 
 const DataCtx = createContext(null);
 
-const DEFAULT_CONFIG = {
-  nombreNegocio: "Cor.al Studio",
-  moneda: "S/",
-  margenDeseado: 40,
-};
-
-// Adding a new module (e.g. "clientes") later is just one more
-// useCollection(...) line here, then reading it from useData()
-// in the new page component.
+// Agregar un módulo nuevo (ej. "clientes") más adelante es una línea
+// más aquí: const clientes = useCollection("clientes"); y sumarlo
+// al value del provider. La tabla debe existir en Supabase primero
+// (ver supabase/schema.sql).
 export function DataProvider({ children }) {
-  const productos = useCollection("coral_productos");
-  const insumos = useCollection("coral_insumos");
-  const recetas = useCollection("coral_recetas");
-  const categoriasProductos = useCollection("coral_categorias_productos");
-  const coleccionesProductos = useCollection("coral_colecciones_productos");
-  const categoriasInsumos = useCollection("coral_categorias_insumos");
-
-  const [config, setConfigState] = useState(() => loadValue("coral_config", DEFAULT_CONFIG));
-  const setConfig = (next) => {
-    setConfigState(next);
-    saveValue("coral_config", next);
-  };
+  const productos = useCollection("productos", { orderBy: "codigo" });
+  const insumos = useCollection("insumos", { orderBy: "codigo" });
+  const recetas = useCollection("recetas", { orderBy: "codigo" });
+  const categoriasProductos = useCollection("categorias_productos", { orderBy: "nombre" });
+  const coleccionesProductos = useCollection("colecciones_productos", { orderBy: "nombre" });
+  const categoriasInsumos = useCollection("categorias_insumos", { orderBy: "nombre" });
+  const { config, setConfig, loading: configLoading } = useConfig();
 
   return (
     <DataCtx.Provider
@@ -37,6 +27,7 @@ export function DataProvider({ children }) {
         categoriasInsumos,
         config,
         setConfig,
+        configLoading,
       }}
     >
       {children}

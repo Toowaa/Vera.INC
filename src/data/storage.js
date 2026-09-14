@@ -1,85 +1,119 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "./supabaseClient.js";
 
-export function loadCollection(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
+// Las tablas en Supabase usan snake_case (coleccion_id, categoria_id...)
+// y el resto de la app usa camelCase (coleccionId, categoriaId...).
+// Estas dos funciones hacen la conversión en un solo lugar, así
+// ninguna página necesita saber cómo se llaman las columnas en SQL.
+const camelToSnake = (str) => str.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase());
+const snakeToCamel = (str) => str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+
+function toDbRow(obj) {
+  const row = {};
+  Object.entries(obj).forEach(([k, v]) => {
+    if (k === "id") return; // el id lo genera Supabase (gen_random_uuid())
+    if (k === "codigo") return; // el código lo genera un trigger en la base de datos
+    row[camelToSnake(k)] = v === "" ? null : v;
+  });
+  return row;
 }
 
-export function saveCollection(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error("No se pudo guardar", key, e);
-  }
+function fromDbRow(row) {
+  const obj = {};
+  Object.entries(row).forEach(([k, v]) => {
+    obj[snakeToCamel(k)] = v === null ? "" : v;
+  });
+  return obj;
 }
 
-export function loadValue(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch (e) {
-    return fallback;
-  }
-}
+// Hook genérico de CRUD contra una tabla de Supabase. Devuelve la
+// misma forma que antes devolvía localStorage ({items, add, update,
+// remove}), más "loading" y "error" — así las páginas casi no cambian.
+// Agregar un módulo nuevo es solo llamar useCollection("nombre_tabla").
+export function useCollection(table, { orderBy = "created_at", ascending = true } = {}) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-export function saveValue(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error("No se pudo guardar", key, e);
-  }
-}
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from(table).select("*").order(orderBy, { ascending });
+    if (error) setError(error);
+    else {
+      setItems(data.map(fromDbRow));
+      setError(null);
+    }
+    setLoading(false);
+  }, [table, orderBy, ascending]);
 
-// Generic hook that gives any page CRUD access to a named collection,
-// persisted automatically. Add a new module by calling useCollection
-// with a new storage key — no other file needs to change.
-export function useCollection(key) {
-  const [items, setItems] = useState(() => loadCollection(key));
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const add = useCallback(
-    (item) => {
-      setItems((prev) => {
-        const next = [...prev, item];
-        saveCollection(key, next);
-        return next;
-      });
+    async (item) => {
+      const { data, error } = await supabase.from(table).insert(toDbRow(item)).select().single();
+      if (error) {
+        setError(error);
+        return null;
+      }
+      const created = fromDbRow(data);
+      setItems((prev) => [...prev, created]);
+      return created;
     },
-    [key]
+    [table]
   );
 
   const update = useCallback(
-    (id, patch) => {
-      setItems((prev) => {
-        const next = prev.map((it) => (it.id === id ? { ...it, ...patch } : it));
-        saveCollection(key, next);
-        return next;
-      });
+    async (id, patch) => {
+      const { data, error } = await supabase.from(table).update(toDbRow(patch)).eq("id", id).select().single();
+      if (error) {
+        setError(error);
+        return null;
+      }
+      const updated = fromDbRow(data);
+      setItems((prev) => prev.map((it) => (it.id === id ? updated : it)));
+      return updated;
     },
-    [key]
+    [table]
   );
 
   const remove = useCallback(
-    (id) => {
-      setItems((prev) => {
-        const next = prev.filter((it) => it.id !== id);
-        saveCollection(key, next);
-        return next;
-      });
+    async (id) => {
+      const { error } = await supabase.from(table).delete().eq("id", id);
+      if (error) {
+        setError(error);
+        return false;
+      }
+      setItems((prev) => prev.filter((it) => it.id !== id));
+      return true;
     },
-    [key]
+    [table]
   );
 
-  const setAll = useCallback(
-    (next) => {
-      setItems(next);
-      saveCollection(key, next);
-    },
-    [key]
-  );
+  return { items, add, update, remove, refresh, loading, error };
+}
 
-  return { items, add, update, remove, setAll };
+// La configuración vive en una sola fila fija (id = true) en la tabla
+// "configuracion" — ver supabase/schema.sql.
+export function useConfig() {
+  const [config, setConfigState] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.from("configuracion").select("*").eq("id", true).single();
+      if (!error) setConfigState(fromDbRow(data));
+      setLoading(false);
+    })();
+  }, []);
+
+  const setConfig = useCallback(async (next) => {
+    const { data, error } = await supabase.from("configuracion").update(toDbRow(next)).eq("id", true).select().single();
+    if (!error) setConfigState(fromDbRow(data));
+    return !error;
+  }, []);
+
+  const fallback = { nombreNegocio: "Cor.al Studio", moneda: "S/", margenDeseado: 40 };
+  return { config: config || fallback, setConfig, loading };
 }

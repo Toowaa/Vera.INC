@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Pencil, Trash2, Boxes, Search } from "lucide-react";
 import { useData } from "../context/DataContext.jsx";
-import { nextCode, uid } from "../data/codes.js";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import Modal from "../components/ui/Modal.jsx";
 import FormField from "../components/ui/FormField.jsx";
@@ -32,14 +31,14 @@ export default function Insumos() {
     setModalOpen(true);
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.nombre.trim() || !form.categoriaId) return;
+    // El código INS001, INS002... lo genera un trigger en Supabase.
     if (editing) {
-      insumos.update(editing.id, form);
+      await insumos.update(editing.id, form);
     } else {
-      const codigo = nextCode("INS", insumos.items, 3);
-      insumos.add({ id: uid(), codigo, ...form });
+      await insumos.add(form);
     }
     setModalOpen(false);
   };
@@ -75,7 +74,9 @@ export default function Insumos() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {insumos.loading ? (
+        <p style={{ color: "var(--taupe)", fontSize: 14 }}>Cargando insumos…</p>
+      ) : filtered.length === 0 ? (
         <EmptyState icon={<Boxes size={26} />} title="Aún no hay insumos" subtitle="Registra los materiales que usas para poder armar recetas." />
       ) : (
         <div className="card" style={{ overflow: "auto" }}>
@@ -149,10 +150,9 @@ export default function Insumos() {
               items={categoriasInsumos.items}
               value={form.categoriaId}
               onChange={(id) => setForm({ ...form, categoriaId: id })}
-              onCreateNew={(nombre) => {
-                const id = uid();
-                categoriasInsumos.add({ id, nombre });
-                setForm((f) => ({ ...f, categoriaId: id }));
+              onCreateNew={async (nombre) => {
+                const created = await categoriasInsumos.add({ nombre });
+                if (created) setForm((f) => ({ ...f, categoriaId: created.id }));
               }}
               placeholder="Selecciona categoría"
             />

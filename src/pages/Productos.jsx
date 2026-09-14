@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Pencil, Trash2, Package, Search } from "lucide-react";
 import { useData } from "../context/DataContext.jsx";
-import { nextCode, uid } from "../data/codes.js";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import Modal from "../components/ui/Modal.jsx";
 import FormField from "../components/ui/FormField.jsx";
@@ -36,14 +35,14 @@ export default function Productos() {
     setModalOpen(true);
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.nombre.trim() || !form.categoriaId) return;
+    // El código PRO001, PRO002... lo genera un trigger en Supabase.
     if (editing) {
-      productos.update(editing.id, form);
+      await productos.update(editing.id, form);
     } else {
-      const codigo = nextCode("PRO", productos.items, 3);
-      productos.add({ id: uid(), codigo, ...form });
+      await productos.add(form);
     }
     setModalOpen(false);
   };
@@ -80,7 +79,9 @@ export default function Productos() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {productos.loading ? (
+        <p style={{ color: "var(--taupe)", fontSize: 14 }}>Cargando productos…</p>
+      ) : filtered.length === 0 ? (
         <EmptyState icon={<Package size={26} />} title="Aún no hay productos" subtitle="Crea tu primer producto para empezar a armar recetas." />
       ) : (
         <div className="card" style={{ overflow: "auto" }}>
@@ -140,10 +141,9 @@ export default function Productos() {
               items={coleccionesProductos.items}
               value={form.coleccionId}
               onChange={(id) => setForm({ ...form, coleccionId: id })}
-              onCreateNew={(nombre) => {
-                const id = uid();
-                coleccionesProductos.add({ id, nombre });
-                setForm((f) => ({ ...f, coleccionId: id }));
+              onCreateNew={async (nombre) => {
+                const created = await coleccionesProductos.add({ nombre });
+                if (created) setForm((f) => ({ ...f, coleccionId: created.id }));
               }}
               placeholder="Sin colección"
             />
@@ -154,10 +154,9 @@ export default function Productos() {
               items={categoriasProductos.items}
               value={form.categoriaId}
               onChange={(id) => setForm({ ...form, categoriaId: id })}
-              onCreateNew={(nombre) => {
-                const id = uid();
-                categoriasProductos.add({ id, nombre });
-                setForm((f) => ({ ...f, categoriaId: id }));
+              onCreateNew={async (nombre) => {
+                const created = await categoriasProductos.add({ nombre });
+                if (created) setForm((f) => ({ ...f, categoriaId: created.id }));
               }}
               placeholder="Selecciona categoría"
             />

@@ -9,11 +9,14 @@ import FormField from "./FormField.jsx";
 export default function CreatableSelect({ label, items, value, onChange, onCreateNew, placeholder, required }) {
   const [creating, setCreating] = useState(false);
   const [nombre, setNombre] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const confirm = () => {
+  const confirm = async () => {
     const trimmed = nombre.trim();
-    if (!trimmed) return;
-    onCreateNew(trimmed);
+    if (!trimmed || saving) return;
+    setSaving(true);
+    await onCreateNew(trimmed);
+    setSaving(false);
     setNombre("");
     setCreating(false);
   };
@@ -48,7 +51,7 @@ export default function CreatableSelect({ label, items, value, onChange, onCreat
               }
             }}
           />
-          <button type="button" className="icon-btn" onClick={confirm}>
+          <button type="button" className="icon-btn" onClick={confirm} disabled={saving}>
             <Check size={14} />
           </button>
           <button
