@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useData } from "../context/DataContext.jsx";
+import { useState } from "react";
+import { useData } from "../context/useData.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import FormField from "../components/ui/FormField.jsx";
 import { PrimaryButton } from "../components/ui/Button.jsx";
@@ -7,13 +7,18 @@ import { PrimaryButton } from "../components/ui/Button.jsx";
 export default function Configuracion() {
   const { config, setConfig, configLoading } = useData();
   const [form, setForm] = useState(config);
+  const [lastConfig, setLastConfig] = useState(config);
   const [saved, setSaved] = useState(false);
 
-  // config llega de forma asíncrona desde Supabase, así que el
-  // formulario se sincroniza en cuanto termina de cargar.
-  useEffect(() => {
+  // config llega de forma asíncrona desde Supabase. En vez de
+  // sincronizarlo con un useEffect (que siempre implica un render
+  // extra), lo ajustamos aquí mismo durante el render: si config
+  // cambió de referencia desde la última vez, actualizamos form.
+  // Es el patrón que recomienda React para este caso exacto.
+  if (config !== lastConfig) {
+    setLastConfig(config);
     setForm(config);
-  }, [config]);
+  }
 
   const submit = async (e) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Plus, Pencil, Trash2, Package, Search } from "lucide-react";
-import { useData } from "../context/DataContext.jsx";
+import { useData } from "../context/useData.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import Modal from "../components/ui/Modal.jsx";
 import FormField from "../components/ui/FormField.jsx";

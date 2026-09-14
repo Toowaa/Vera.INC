@@ -1,6 +1,5 @@
-import React from "react";
 import { Package, Boxes, Layers, AlertTriangle } from "lucide-react";
-import { useData } from "../context/DataContext.jsx";
+import { useData } from "../context/useData.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 
 export default function Dashboard() {

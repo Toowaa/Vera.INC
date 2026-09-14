@@ -35,20 +35,43 @@ export function useCollection(table, { orderBy = "created_at", ascending = true 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Carga inicial: código escrito directamente dentro del efecto
+  // (no delegado a una función externa), igual que useConfig más
+  // abajo. "ignore" evita setState si el componente se desmonta o
+  // el efecto vuelve a correr antes de que termine la consulta.
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      const { data, error } = await supabase.from(table).select("*").order(orderBy, { ascending });
+      if (ignore) return;
+      if (error) {
+        setError(error);
+      } else {
+        setItems(data.map(fromDbRow));
+        setError(null);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [table, orderBy, ascending]);
+
+  // refresh es solo para recargar manualmente (botones, después de
+  // una acción externa, etc.) — nunca se llama desde un efecto, así
+  // que puede poner loading en true sin problema.
   const refresh = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from(table).select("*").order(orderBy, { ascending });
-    if (error) setError(error);
-    else {
-      setItems(data.map(fromDbRow));
-      setError(null);
+    if (error) {
+      setError(error);
+      setLoading(false);
+      return;
     }
+    setItems(data.map(fromDbRow));
+    setError(null);
     setLoading(false);
   }, [table, orderBy, ascending]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
 
   const add = useCallback(
     async (item) => {
@@ -94,8 +117,10 @@ export function useCollection(table, { orderBy = "created_at", ascending = true 
   return { items, add, update, remove, refresh, loading, error };
 }
 
-// La configuración vive en una sola fila fija (id = true) en la tabla
-// "configuracion" — ver supabase/schema.sql.
+// Fuera de la función, como constante del módulo, para que la
+// referencia sea siempre la misma mientras config aún no carga.
+const FALLBACK_CONFIG = { nombreNegocio: "Cor.al Studio", moneda: "S/", margenDeseado: 40 };
+
 export function useConfig() {
   const [config, setConfigState] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -114,6 +139,5 @@ export function useConfig() {
     return !error;
   }, []);
 
-  const fallback = { nombreNegocio: "Cor.al Studio", moneda: "S/", margenDeseado: 40 };
-  return { config: config || fallback, setConfig, loading };
+  return { config: config || FALLBACK_CONFIG, setConfig, loading };
 }

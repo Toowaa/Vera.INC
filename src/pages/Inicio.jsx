@@ -1,7 +1,6 @@
-import React from "react";
 import { Link } from "react-router-dom";
 import { Package, Boxes, ChefHat, Calculator, LayoutDashboard, Settings2 } from "lucide-react";
-import { useData } from "../context/DataContext.jsx";
+import { useData } from "../context/useData.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 
 export default function Inicio() {

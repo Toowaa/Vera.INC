@@ -1,4 +1,3 @@
-import React from "react";
 import { NavLink } from "react-router-dom";
 import { Home, Package, Boxes, ChefHat, Calculator, LayoutDashboard, Settings2, X } from "lucide-react";
 
