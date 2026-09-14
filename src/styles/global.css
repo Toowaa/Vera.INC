@@ -440,6 +440,7 @@ body,
     position: absolute;
     top: 20px;
     right: 16px;
+    z-index: 100;
     border: none;
     background: #fff;
     color: var(--taupe);
