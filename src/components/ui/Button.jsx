@@ -1,5 +1,3 @@
-import React from "react";
-
 export function PrimaryButton({ children, onClick, type = "button", style }) {
   return (
     <button type={type} onClick={onClick} className="btn btn-primary" style={style}>

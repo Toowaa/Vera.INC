@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Plus, Pencil, Trash2, ChefHat } from "lucide-react";
-import { useData } from "../context/DataContext.jsx";
-import { nextCode, uid } from "../data/codes.js";
+import { useData } from "../context/useData.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import Modal from "../components/ui/Modal.jsx";
 import FormField from "../components/ui/FormField.jsx";
@@ -44,14 +43,16 @@ export default function Recetas() {
     setForm((f) => ({ ...f, insumoId, unidad: f.unidad || (ins ? ins.unidad : "") }));
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.productoId || !form.insumoId || form.cantidad === "") return;
+    // El código REC0001, REC0002... lo genera un trigger en Supabase.
+    // cantidad/merma van como number porque las columnas son numeric.
+    const payload = { ...form, cantidad: Number(form.cantidad), merma: Number(form.merma || 0) };
     if (editing) {
-      recetas.update(editing.id, form);
+      await recetas.update(editing.id, payload);
     } else {
-      const codigo = nextCode("REC", recetas.items, 4);
-      recetas.add({ id: uid(), codigo, ...form });
+      await recetas.add(payload);
     }
     setModalOpen(false);
   };
@@ -71,7 +72,9 @@ export default function Recetas() {
         }
       />
 
-      {productos.items.length === 0 || insumos.items.length === 0 ? (
+      {productos.loading || insumos.loading || recetas.loading ? (
+        <p style={{ color: "var(--taupe)", fontSize: 14 }}>Cargando recetas…</p>
+      ) : productos.items.length === 0 || insumos.items.length === 0 ? (
         <EmptyState
           icon={<ChefHat size={26} />}
           title="Primero crea productos e insumos"
@@ -177,7 +180,8 @@ export default function Recetas() {
                 <FormField label="Cantidad">
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="0"
                     className="input"
                     value={form.cantidad}
                     onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
@@ -192,14 +196,19 @@ export default function Recetas() {
               </div>
               <div style={{ flex: 1 }}>
                 <FormField label="Merma (%)">
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="input"
-                    value={form.merma}
-                    onChange={(e) => setForm({ ...form, merma: e.target.value })}
-                    placeholder="0"
-                  />
+                  <div className="input-suffix">
+                    <input
+                      type="number"
+                      step="5"
+                      min="0"
+                      max="100"
+                      className="input"
+                      value={form.merma}
+                      onChange={(e) => setForm({ ...form, merma: e.target.value })}
+                      placeholder="0"
+                    />
+                    <span aria-hidden="true">%</span>
+                  </div>
                 </FormField>
               </div>
             </div>

@@ -1,6 +1,5 @@
-import React from "react";
 import { Calculator, AlertTriangle } from "lucide-react";
-import { useData } from "../context/DataContext.jsx";
+import { useData } from "../context/useData.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 
