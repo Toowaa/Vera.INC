@@ -19,7 +19,12 @@ const NAV = [
 export default function Sidebar({ open, onClose }) {
   return (
     <aside className={`sidebar ${open ? "open" : ""}`}>
-      <button className="sidebar-close-btn" onClick={onClose} aria-label="Cerrar menú">
+      <button
+        type="button"
+        className="sidebar-close-btn"
+        onClick={() => {  onClose();}}
+        aria-label="Cerrar menú"
+      >
         <X size={16} />
       </button>
       <div className="logo-wrap">
